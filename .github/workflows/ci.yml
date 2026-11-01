@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# grpc-observer is not on PyPI yet: every job checks it out next to this repository, where
+# `[tool.uv.sources]` expects it (../grpc-observer), and installs it first.
+env:
+  GRPC_OBSERVER_REPO: ValeriyMenshikov/grpc-observer
+
+defaults:
+  run:
+    working-directory: grpc-coverage
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: grpc-coverage
+      - uses: astral-sh/setup-uv@v10
+      - run: uvx ruff@0.17.3 check .
+      - run: uvx ruff@0.17.3 format --check .
+
+  test:
+    name: test (python ${{ matrix.python }}, ${{ matrix.deps }} deps)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13", "3.14"]
+        # minimum: the floors from pyproject.toml (grpcio, grpcio-reflection, grpcio-tools, protobuf), see the
+        # markers there for newer Pythons. latest: the newest releases, regardless of uv.lock.
+        deps: [minimum, latest]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: grpc-coverage
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ env.GRPC_OBSERVER_REPO }}
+          path: grpc-observer
+      - uses: astral-sh/setup-uv@v10
+      - run: uv venv --python ${{ matrix.python }}
+      - name: Install the package with minimum dependencies
+        if: matrix.deps == 'minimum'
+        run: uv pip install --resolution lowest-direct -e ../grpc-observer -e ".[proto]"
+      - name: Install the package with latest dependencies
+        if: matrix.deps == 'latest'
+        run: uv pip install --upgrade -e ../grpc-observer -e ".[proto]"
+      # Test tools only; they do not touch grpcio / protobuf.
+      - run: uv pip install pytest pytest-asyncio pytest-xdist
+      - run: uv pip list
+      - run: uv run --no-sync pytest -v -rs -n 4
+
+  # Without the [proto] extra: the test stubs are generated first with grpcio-tools of the same version as grpcio
+  # (generated code checks it), then grpcio-tools is removed. Compiling `.proto` says what to install instead.
+  test-without-proto:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: grpc-coverage
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ env.GRPC_OBSERVER_REPO }}
+          path: grpc-observer
+      - uses: astral-sh/setup-uv@v10
+      - run: uv venv --python 3.14
+      - run: uv pip install -e ../grpc-observer -e . pytest pytest-asyncio pytest-xdist
+      - name: Generate the test stubs
+        run: |
+          uv pip install "grpcio-tools==$(uv run --no-sync python -c 'import grpc; print(grpc.__version__)')"
+          uv run --no-sync python -c "import sys; sys.path.insert(0, 'tests'); from helpers import generate; from pathlib import Path; generate(Path('$RUNNER_TEMP/gen'))"
+          uv pip uninstall grpcio-tools
+      - name: grpcio-tools must not be installed
+        run: uv run --no-sync python -c "import importlib.util, sys; sys.exit(importlib.util.find_spec('grpc_tools') is not None)"
+      - run: uv run --no-sync pytest -v -rs -n 4
+        env:
+          GC_GEN_DIR: ${{ runner.temp }}/gen
+
+  # Without pytest-xdist: the plugin must not need it; the xdist tests are skipped.
+  test-without-xdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: grpc-coverage
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ env.GRPC_OBSERVER_REPO }}
+          path: grpc-observer
+      - uses: astral-sh/setup-uv@v10
+      - run: uv venv --python 3.14
+      - run: uv pip install -e ../grpc-observer -e ".[proto]" pytest pytest-asyncio
+      - name: pytest-xdist must not be installed
+        run: uv run --no-sync python -c "import importlib.util, sys; sys.exit(importlib.util.find_spec('xdist') is not None)"
+      - run: uv run --no-sync pytest -v -rs

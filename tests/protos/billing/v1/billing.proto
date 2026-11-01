@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package billing.v1;
+
+import "google/protobuf/wrappers.proto";
+
+enum Currency {
+  CURRENCY_UNSPECIFIED = 0;
+  CURRENCY_USD = 1;
+  CURRENCY_EUR = 2;
+}
+
+message Money {
+  int64 units = 1;
+  Currency currency = 2;
+}
+
+message Card {
+  string number = 1;
+}
+
+message ChargeRequest {
+  string account_id = 1;
+  Money amount = 2;
+  oneof method {
+    Card card = 3;
+    string wallet = 4;
+  }
+  google.protobuf.StringValue comment = 5;
+}
+
+message ChargeResponse {
+  string charge_id = 1;
+}
+
+message RefundRequest {
+  string charge_id = 1;
+}
+
+message WatchRequest {
+  string account_id = 1;
+}
+
+service Billing {
+  rpc Charge(ChargeRequest) returns (ChargeResponse);
+  rpc Refund(RefundRequest) returns (ChargeResponse);
+  rpc Watch(WatchRequest) returns (stream ChargeResponse);
+}

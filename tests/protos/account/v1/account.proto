@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package account.v1;
+
+import "google/protobuf/timestamp.proto";
+
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_ACTIVE = 1;
+  STATUS_BLOCKED = 2;
+}
+
+message Address {
+  string city = 1;
+  string street = 2;
+}
+
+message User {
+  string name = 1;
+  Status status = 2;
+  Address address = 3;
+  repeated string tags = 4;
+  map<string, string> labels = 5;
+  optional int32 age = 6;
+}
+
+// Recursive type: `children.children` is cut from the contract.
+message Node {
+  string name = 1;
+  repeated Node children = 2;
+}
+
+message CreateRequest {
+  User user = 1;
+  google.protobuf.Timestamp created_at = 2;
+  oneof contact {
+    string email = 3;
+    string phone = 4;
+  }
+}
+
+message CreateResponse {
+  string id = 1;
+}
+
+message GetRequest {
+  string id = 1;
+}
+
+message ListRequest {
+  int32 limit = 1;
+  repeated Status statuses = 2;
+}
+
+message UploadRequest {
+  bytes chunk = 1;
+  Node tree = 2;
+}
+
+message UploadResponse {
+  int32 chunks = 1;
+}
+
+message ChatMessage {
+  string text = 1;
+  map<string, Address> addresses = 2;
+}
+
+service Account {
+  rpc Create(CreateRequest) returns (CreateResponse);
+  rpc Get(GetRequest) returns (User);
+  rpc List(ListRequest) returns (stream User);
+  rpc Upload(stream UploadRequest) returns (UploadResponse);
+  rpc Chat(stream ChatMessage) returns (stream ChatMessage);
+}
+
+service Admin {
+  rpc Block(GetRequest) returns (User);
+}

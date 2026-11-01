@@ -1,0 +1,20 @@
+[project]
+name = "demo-api-tests"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.grpc-coverage]
+title = "Demo: account and billing"
+fail-under = 50
+
+[tool.grpc-coverage.account]
+
+[tool.grpc-coverage.account.expected-codes]
+"/account.v1.Account/Create" = ["INVALID_ARGUMENT", "ALREADY_EXISTS"]
+"/account.v1.Account/Get" = ["NOT_FOUND"]
+
+[tool.grpc-coverage.billing]
+
+[tool.grpc-coverage.billing.expected-codes]
+"/billing.v1.Billing/Charge" = ["INVALID_ARGUMENT"]

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package auth.v1;
+
+// Served by the auth test server next to account.v1: tokens are issued at runtime and rotate,
+// so they can't be written into pyproject.toml.
+message LoginRequest {
+  string user = 1;
+}
+
+message LoginReply {
+  string token = 1;
+}
+
+service Auth {
+  rpc Login(LoginRequest) returns (LoginReply);
+}

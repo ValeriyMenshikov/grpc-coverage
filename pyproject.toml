@@ -1,0 +1,73 @@
+[project]
+name = "grpc-coverage"
+version = "0.1.0"
+description = "gRPC API coverage for tests: which RPCs, request fields, enum values, oneof branches and status codes were exercised"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+dependencies = [
+    "grpc-observer>=0.1",
+    "grpcio>=1.65.1",
+    "grpcio>=1.66.2; python_version >= '3.13'",
+    "grpcio>=1.75.1; python_version >= '3.14'",
+    "grpcio-reflection>=1.65.1",
+    "grpcio-reflection>=1.66.2; python_version >= '3.13'",
+    "grpcio-reflection>=1.75.1; python_version >= '3.14'",
+    "protobuf>=5.26",
+    "protobuf>=5.27; python_version >= '3.14'",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Framework :: Pytest",
+    "Framework :: AsyncIO",
+    "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+proto = [
+    "grpcio-tools>=1.65.1",
+    "grpcio-tools>=1.66.2; python_version >= '3.13'",
+    "grpcio-tools>=1.75.1; python_version >= '3.14'",
+]
+
+[project.scripts]
+grpc-coverage = "grpc_coverage.cli:main"
+
+[project.entry-points.pytest11]
+grpc_coverage = "grpc_coverage.pytest_plugin"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "pytest-xdist>=3.5",
+    "ruff>=0.6",
+    "grpcio-tools>=1.65.1",
+]
+
+[tool.uv.sources]
+grpc-observer = { path = "../grpc-observer", editable = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/grpc_coverage"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["*.md", "tests/_gen"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
